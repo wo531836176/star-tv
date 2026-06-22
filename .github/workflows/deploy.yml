@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ master ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+          exclude: |
+            .git
+            node_modules
+            downloads
+            .github
+            Dockerfile
+            .dockerignore
+            render.yaml
+            vercel.json
+            AGENTS.md
+            DEPLOY.md
+            CHANGELOG.md
+            start.bat
+            start-server.bat
+            tunnel.bat
+            查看域名.bat
+            lib/ffmpeg.exe
+            lib/ffprobe.exe
+            lib/cloudflared.exe
+            error.txt
+            output.txt
+            cloudflare_error.txt
+            cloudflare_output.txt
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
