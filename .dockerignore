@@ -1,0 +1,13 @@
+node_modules
+downloads
+.git
+*.exe
+lib/cloudflared.exe
+lib/ffmpeg.exe
+lib/ffprobe.exe
+.workbuddy
+error.txt
+output.txt
+cloudflare_error.txt
+cloudflare_output.txt
+_dream_query*.js

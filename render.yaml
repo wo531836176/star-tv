@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: star-tv
+    runtime: node
+    plan: free
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production

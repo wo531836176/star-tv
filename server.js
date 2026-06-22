@@ -13,7 +13,9 @@ const MAX_CONCURRENT_SEGMENTS = 6;
 const MAX_CONCURRENT_DOWNLOADS = 5;
 const DL_DIR = path.join(ROOT, 'downloads');
 const QUEUE_FILE = path.join(DL_DIR, '_queue.json');
-const FFMPEG_PATH = path.join(ROOT, 'lib', 'ffmpeg.exe');
+const FFMPEG_PATH = process.platform === 'win32'
+    ? path.join(ROOT, 'lib', 'ffmpeg.exe')
+    : 'ffmpeg';
 
 // Netdisk search cache (max 50 entries)
 const netdiskCache = new Map();
