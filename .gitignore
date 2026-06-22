@@ -1,0 +1,9 @@
+node_modules/
+downloads/
+*.exe
+error.txt
+output.txt
+cloudflare_error.txt
+cloudflare_output.txt
+.workbuddy/
+_dream_query*.js

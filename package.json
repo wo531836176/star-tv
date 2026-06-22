@@ -1,0 +1,14 @@
+{
+  "name": "startv",
+  "version": "1.06",
+  "description": "StarTV - 在线影视平台",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": ["tv", "video", "streaming"],
+  "license": "MIT"
+}

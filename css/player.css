@@ -1,0 +1,467 @@
+/* Player Page */
+.player-page {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #000;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+}
+
+.player-header {
+    height: 50px;
+    background: rgba(0,0,0,0.9);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.player-header .back-btn {
+    border: none;
+    padding: 6px 12px;
+}
+
+.player-title {
+    flex: 1;
+    font-size: 15px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-header-right {
+    display: flex;
+    gap: 8px;
+}
+
+.player-header-right .icon-btn {
+    color: var(--text-secondary);
+}
+
+/* Player Container */
+.player-container {
+    flex: 1;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Controls */
+.player-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.9));
+    padding: 40px 16px 12px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.player-container:hover .player-controls,
+.player-controls.show {
+    opacity: 1;
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 10px;
+    transition: height 0.15s ease;
+}
+
+.progress-bar:hover {
+    height: 6px;
+}
+
+.progress-buffered {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+}
+
+.progress-played {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+}
+
+.progress-thumb {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    transition: transform 0.15s ease;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.progress-bar:hover .progress-thumb {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.progress-bar .time-tooltip {
+    position: absolute;
+    bottom: 20px;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    display: none;
+    white-space: nowrap;
+}
+
+.progress-bar:hover .time-tooltip {
+    display: block;
+}
+
+/* Controls Bottom */
+.controls-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.controls-left, .controls-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ctrl-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+}
+
+.ctrl-btn:hover {
+    background: rgba(255,255,255,0.15);
+}
+
+.ctrl-btn.active {
+    color: var(--accent);
+}
+
+.time-display {
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+    font-variant-numeric: tabular-nums;
+    margin-left: 8px;
+    user-select: none;
+}
+
+/* Volume */
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.volume-slider {
+    width: 0;
+    opacity: 0;
+    transition: width 0.2s ease, opacity 0.2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-control:hover .volume-slider {
+    width: 80px;
+    opacity: 1;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+}
+
+/* Speed Menu */
+.speed-control {
+    position: relative;
+}
+
+.speed-btn {
+    font-size: 13px !important;
+    font-weight: 600;
+    min-width: 42px !important;
+}
+
+.speed-menu {
+    position: absolute;
+    bottom: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,20,20,0.95);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px;
+    display: none;
+    z-index: 10;
+    min-width: 80px;
+}
+
+.speed-menu.show { display: block; }
+
+.speed-option {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.speed-option:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.speed-option.active {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Quality Menu */
+.quality-control {
+    position: relative;
+}
+
+.quality-btn {
+    font-size: 13px !important;
+    min-width: 48px !important;
+}
+
+.quality-menu {
+    position: absolute;
+    bottom: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,20,20,0.95);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px;
+    display: none;
+    z-index: 10;
+    min-width: 100px;
+}
+
+.quality-menu.show { display: block; }
+
+.quality-option {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: center;
+    transition: var(--transition);
+}
+
+.quality-option:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.quality-option.active {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+/* Loading */
+.player-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    z-index: 5;
+}
+
+.player-loading .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border-width: 3px;
+}
+
+.player-loading.hidden { display: none; }
+
+/* Player Episode List */
+.player-episode-list {
+    height: 0;
+    background: var(--bg-secondary);
+    overflow-y: auto;
+    transition: height 0.3s ease;
+    flex-shrink: 0;
+}
+
+.player-episode-list.show {
+    height: 200px;
+    padding: 16px 20px;
+}
+
+.player-episode-list .ep-list-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.player-episode-list .ep-item {
+    min-width: 70px;
+    font-size: 12px;
+}
+
+/* Center Overlay Messages */
+.player-overlay-msg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 16px 32px;
+    border-radius: var(--radius);
+    font-size: 18px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 6;
+}
+
+.player-overlay-msg.show {
+    opacity: 1;
+}
+
+/* Download Panel */
+.download-panel {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    width: 300px;
+    background: rgba(20,20,20,0.95);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    display: none;
+    z-index: 20;
+}
+
+.download-panel.show { display: block; }
+
+.download-panel h4 {
+    margin-bottom: 12px;
+    font-size: 15px;
+}
+
+.download-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.download-item:last-child { border-bottom: none; }
+
+.download-item .dl-name {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.download-item .dl-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.download-progress {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.download-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-hover);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.download-progress-bar .fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
