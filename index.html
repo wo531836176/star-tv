@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.21</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.22</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -371,10 +371,45 @@ let stack=[],favs=JSON.parse(localStorage.getItem('sv_f')||'[]'),hls=null;
 let curPanIdx=0,curWebIdx=0,vidList=[];
 let curCatPage=1,curCatLoading=false,curCatAllData=[];
 
-var CORS_PROXY='https://api.allorigins.win/raw?url=';
+var CORS_PROXIES=[
+  'https://corsproxy.io/?url=',
+  'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest='
+];
+var CORS_PROXY=CORS_PROXIES[0];
 function apiUrl(src,params){const u=new URL(src.u);for(const[k,v]of Object.entries(params))if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,v);return CORS_PROXY+encodeURIComponent(u.toString());}
 function proxyUrl(url){return CORS_PROXY+encodeURIComponent(url);}
-async function fetchData(params){const src=SRC[si];const r=await fetch(apiUrl(src,params),{signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d&&(d.code===1||d.list))return d;throw new Error(d.msg||'No data');}
+
+function getCached(key,ttlMs){
+  try{var c=JSON.parse(localStorage.getItem('sv_cache_'+key)||'null');if(c&&Date.now()-c.t<ttlMs)return c.d;}catch(e){}
+  return null;
+}
+function setCache(key,data){
+  try{localStorage.setItem('sv_cache_'+key,JSON.stringify({d:data,t:Date.now()}));}catch(e){}
+}
+
+async function fetchWithProxy(url,timeoutMs){
+  for(var i=0;i<CORS_PROXIES.length;i++){
+    try{
+      var r=await fetch(CORS_PROXIES[i]+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||8000)});
+      if(r.ok)return r;
+    }catch(e){}
+  }
+  throw new Error('All proxies failed');
+}
+
+async function fetchData(params){
+  var src=SRC[si];
+  var u=new URL(src.u);for(var k in params)if(params[k]!==undefined&&params[k]!==null&&params[k]!=='')u.searchParams.set(k,params[k]);
+  var fullUrl=u.toString();
+  var cacheKey=fullUrl;
+  var cached=getCached(cacheKey,10*60*1000);
+  if(cached)return cached;
+  var r=await fetchWithProxy(fullUrl,10000);
+  var d=await r.json();
+  if(d&&(d.code===1||d.list)){setCache(cacheKey,d);return d;}
+  throw new Error(d.msg||'No data');
+}
 function parseList(d){if(!d||!d.list)return[];return d.list.map(v=>({id:v.vod_id,name:v.vod_name||'',pic:v.vod_pic||'',year:v.vod_year||'',area:v.vod_area||'',type:v.type_name||'',cls:v.vod_class||'',remarks:v.vod_remarks||'',score:v.vod_score||'',desc:v.vod_content?v.vod_content.replace(/<[^>]+>/g,'').trim():'',playFrom:v.vod_play_from||'',playUrl:v.vod_play_url||''}));}
 function parseEps(u){if(!u)return[];return u.split('#').map(s=>{const p=s.split('$');return{name:p[0]||'',url:p[1]||''};}).filter(e=>e.url&&e.name);}
 function toast(m,t=''){const c=document.getElementById('tC'),e=document.createElement('div');e.className='toast '+t;e.textContent=m;c.appendChild(e);setTimeout(()=>e.remove(),3000);}
@@ -422,23 +457,39 @@ async function loadHome(){
   curView='home';stack=[];vidList=[];hideAll();setActiveNav(0);
   document.getElementById('hotG').innerHTML='<div class="empty"><div class="spin"></div></div>';
   document.getElementById('newG').innerHTML='<div class="empty"><div class="spin"></div></div>';
-  for(let i=0;i<SRC.length;i++){
-    try{
-      si=i;let all=[];
-      for(let p=1;p<=5;p++){try{const d=await fetchData({ac:'detail',pg:p});all=all.concat(parseList(d));}catch(e){break;}}
-      if(all.length<10)continue;
-      const clean=all.filter(v=>!SHORT_DRAMA.test(v.name));
-      const movies=clean.filter(v=>v.type.includes('电影'));
-      const tvShows=clean.filter(v=>v.type.includes('剧'));
-      if(movies.length>0)renderGrid(document.getElementById('hotG'),movies.slice(0,30));
-      else renderGrid(document.getElementById('hotG'),clean.filter(v=>!v.type.includes('剧')&&!v.type.includes('动漫')).slice(0,30));
-      if(tvShows.length>0)renderGrid(document.getElementById('newG'),tvShows.slice(0,30));
-      else renderGrid(document.getElementById('newG'),clean.slice(0,30));
-      return;
-    }catch(e){console.log(SRC[i].n+' failed:',e.message);}
+
+  var cachedHome=getCached('home_data',15*60*1000);
+  if(cachedHome){
+    renderGrid(document.getElementById('hotG'),cachedHome.movies);
+    renderGrid(document.getElementById('newG'),cachedHome.tvShows);
+    return;
   }
-  document.getElementById('hotG').innerHTML='<div class="empty"><div class="ic">&#9888;</div>所有数据源均无法访问</div>';
-  document.getElementById('newG').innerHTML='';
+
+  var allResults=await Promise.allSettled(SRC.map(async function(src,idx){
+    try{
+      si=idx;var all=[];
+      for(var p=1;p<=3;p++){try{var d=await fetchData({ac:'detail',pg:p});all=all.concat(parseList(d));}catch(e){break;}}
+      return all;
+    }catch(e){return[];}
+  }));
+
+  var all=[];
+  allResults.forEach(function(r){if(r.status==='fulfilled')all=all.concat(r.value);});
+  var clean=all.filter(function(v){return!SHORT_DRAMA.test(v.name);});
+  var movies=clean.filter(function(v){return v.type.includes('电影');});
+  var tvShows=clean.filter(function(v){return v.type.includes('剧');});
+
+  var hotList=movies.length>0?movies.slice(0,30):clean.filter(function(v){return!v.type.includes('剧')&&!v.type.includes('动漫');}).slice(0,30);
+  var newList=tvShows.length>0?tvShows.slice(0,30):clean.slice(0,30);
+
+  if(hotList.length>0){
+    renderGrid(document.getElementById('hotG'),hotList);
+    renderGrid(document.getElementById('newG'),newList);
+    setCache('home_data',{movies:hotList,tvShows:newList});
+  }else{
+    document.getElementById('hotG').innerHTML='<div class="empty"><div class="ic">&#9888;</div>所有数据源均无法访问</div>';
+    document.getElementById('newG').innerHTML='';
+  }
 }
 async function goCat(t,page=1){
   if(curCatLoading)return;
@@ -553,27 +604,34 @@ async function doSearch(){
   document.getElementById('webSrchSec').style.display='none';
   document.getElementById('srchT').textContent='搜索: "'+kw+'"';
   document.getElementById('srchG').innerHTML='<div class="empty"><div class="spin"></div></div>';
-  let allResults=[];
-  const seen=new Set();
-  for(let i=0;i<SRC.length;i++){
-    try{
-      si=i;
-      const d=await fetchData({ac:'detail',wd:kw,pg:1});
-      const list=parseList(d);
-      list.forEach(v=>{if(!seen.has(v.id)){seen.add(v.id);allResults.push(v);}});
-    }catch(e){}
+
+  var cacheKey='search_'+kw;
+  var cached=getCached(cacheKey,30*60*1000);
+  if(cached){
+    renderGrid(document.getElementById('srchG'),cached);
+    document.getElementById('srchT').textContent='搜索: "'+kw+'" ('+cached.length+'条结果)';
+    return;
   }
+
+  var results=await Promise.allSettled(SRC.map(async function(src,idx){
+    try{
+      si=idx;var d=await fetchData({ac:'detail',wd:kw,pg:1});return parseList(d);
+    }catch(e){return[];}
+  }));
+  var allResults=[];var seen=new Set();
+  results.forEach(function(r){
+    if(r.status==='fulfilled')r.value.forEach(function(v){if(!seen.has(v.id)){seen.add(v.id);allResults.push(v);}});
+  });
   if(allResults.length>0){
-    allResults.sort((a,b)=>{
-      const an=a.name.toLowerCase(),bn=b.name.toLowerCase(),k=kw.toLowerCase();
-      if(an===k&&bn!==k)return -1;
-      if(bn===k&&an!==k)return 1;
-      if(an.startsWith(k)&&!bn.startsWith(k))return -1;
-      if(bn.startsWith(k)&&!an.startsWith(k))return 1;
+    allResults.sort(function(a,b){
+      var an=a.name.toLowerCase(),bn=b.name.toLowerCase(),k=kw.toLowerCase();
+      if(an===k&&bn!==k)return-1;if(bn===k&&an!==k)return 1;
+      if(an.startsWith(k)&&!bn.startsWith(k))return-1;if(bn.startsWith(k)&&!an.startsWith(k))return 1;
       return 0;
     });
     renderGrid(document.getElementById('srchG'),allResults);
     document.getElementById('srchT').textContent='搜索: "'+kw+'" ('+allResults.length+'条结果)';
+    setCache(cacheKey,allResults);
   }else{
     document.getElementById('srchG').innerHTML='<div class="empty"><div class="ic">&#128269;</div>未找到</div>';
   }
