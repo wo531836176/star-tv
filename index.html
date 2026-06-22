@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.22</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.23</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -893,12 +893,7 @@ function loadPlay(v){
 }
 function swLn(i){curLn=i;document.querySelectorAll('#sT .stag').forEach((e,j)=>e.className='stag'+(j===i?' on':''));showEps(i);}
 function showEps(i){const l=curLines[i];if(!l)return;curEps=l.eps;document.getElementById('eL').innerHTML=curEps.map((e,j)=>{
-  const done=_isEpDownloaded(e.name);
-  const dl=_isDownloading(e.url);
-  let badge='';
-  if(done)badge='<span style="color:#2ecc71;font-size:11px;margin-left:4px">&#10003;</span>';
-  else if(dl)badge='<span style="color:#f39c12;font-size:11px;margin-left:4px">↓</span>';
-  return '<div class="ep'+(j===curEpIdx?' on':'')+'" onclick="playEp('+j+')">'+e.name+badge+'</div>';
+  return '<div class="ep'+(j===curEpIdx?' on':'')+'" onclick="playEp('+j+')">'+e.name+'</div>';
 }).join('');}
 
 function playEp(idx){
@@ -915,14 +910,93 @@ function startPlay(url){
   var isLocal=url.indexOf('/local-video?')>=0;
   document.getElementById('localBadge').style.display=isLocal?'block':'none';
   if(isLocal){
-    vid.src=url;
-    vid.load();
-    vid.play().catch(function(e){
-      console.log(' autoplay blocked, retrying...',e);
-      setTimeout(function(){vid.play().catch(function(){});},500);
-    });
+    vid.src=url;vid.load();
+    vid.play().catch(function(e){setTimeout(function(){vid.play().catch(function(){});},500);});
     return;
   }
+  if(url.endsWith('.m3u8')||url.indexOf('.m3u8?')>0){
+    proxyAndPlayM3u8(url);
+  }else{
+    proxyAndPlayM3u8(url);
+  }
+}
+
+async function proxyAndPlayM3u8(url){
+  var vid=document.getElementById('vid');
+  try{
+    var r=await fetchWithProxy(url,15000);
+    var text=await r.text();
+    var base=url.substring(0,url.lastIndexOf('/')+1);
+    var lines=text.split('\n');
+    var rewritten=lines.map(function(line){
+      var t=line.trim();
+      if(!t||t.startsWith('#'))return line;
+      var absUrl;
+      if(t.startsWith('http://')||t.startsWith('https://')){
+        absUrl=t;
+      }else{
+        absUrl=new URL(t,base).href;
+      }
+      return absUrl;
+    }).join('\n');
+    var blob=new Blob([rewritten],{type:'application/vnd.apple.mpegurl'});
+    var blobUrl=URL.createObjectURL(blob);
+    initHlsPlayer(blobUrl);
+  }catch(e){
+    console.error('m3u8 proxy failed:',e.message);
+    toast('视频加载失败: '+e.message,'err');
+  }
+}
+
+function initHlsPlayer(srcUrl){
+  var vid=document.getElementById('vid');
+  if(Hls.isSupported()){
+    hls=new Hls({
+      maxBufferLength:60,
+      maxMaxBufferLength:120,
+      maxBufferSize:60*1024*1024,
+      startFragPrefetch:true,
+      fragLoadingTimeOut:20000,
+      manifestLoadingTimeOut:15000,
+      levelLoadingTimeOut:15000,
+      lowBufferWatchdogPeriod:1,
+      highBufferWatchdogPeriod:3,
+      nudgeOffset:0.05,
+      nudgeMaxRetry:5,
+      testBandwidth:true,
+      abrEwmaDefaultEstimate:2000000,
+      abrEwmaFastEstimate:2000000,
+      abrBandWidthFactor:0.95,
+      abrBandWidthUpFactor:0.7,
+      startLevel:-1,
+      enableWorker:true,
+      xhrSetup:function(xhr,reqUrl){
+        if(reqUrl.indexOf('blob:')!==0&&reqUrl.indexOf(CORS_PROXY)===-1){
+          var proxied=CORS_PROXY+encodeURIComponent(reqUrl);
+          try{xhr.open('GET',proxied,true);}catch(e){}
+        }
+      }
+    });
+    hls.loadSource(srcUrl);
+    hls.attachMedia(vid);
+    hls.on(Hls.Events.MANIFEST_PARSED,function(){vid.play().catch(function(){});});
+    hls.on(Hls.Events.ERROR,function(e,d){
+      if(d.fatal){
+        if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
+          console.error('HLS network error:',d);
+          hls.startLoad();
+        }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
+          hls.recoverMediaError();
+        }
+      }
+    });
+  }else if(vid.canPlayType('application/vnd.apple.mpegurl')){
+    vid.src=srcUrl;
+    vid.play().catch(function(){});
+  }else{
+    toast('您的浏览器不支持HLS播放','err');
+  }
+}
   var px=url.indexOf('/proxy?url=')===0?url:proxyUrl(url);
   if(Hls.isSupported()){
     hls=new Hls({
