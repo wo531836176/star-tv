@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.24</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.25</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -371,12 +371,7 @@ let stack=[],favs=JSON.parse(localStorage.getItem('sv_f')||'[]'),hls=null;
 let curPanIdx=0,curWebIdx=0,vidList=[];
 let curCatPage=1,curCatLoading=false,curCatAllData=[];
 
-var CORS_PROXIES=[
-  'https://corsproxy.io/?url=',
-  'https://api.allorigins.win/raw?url=',
-  'https://api.codetabs.com/v1/proxy?quest='
-];
-var CORS_PROXY=CORS_PROXIES[0];
+var CORS_PROXY='https://api.allorigins.win/raw?url=';
 function apiUrl(src,params){const u=new URL(src.u);for(const[k,v]of Object.entries(params))if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,v);return CORS_PROXY+encodeURIComponent(u.toString());}
 function proxyUrl(url){return CORS_PROXY+encodeURIComponent(url);}
 
@@ -388,27 +383,8 @@ function setCache(key,data){
   try{localStorage.setItem('sv_cache_'+key,JSON.stringify({d:data,t:Date.now()}));}catch(e){}
 }
 
-async function fetchWithProxy(url,timeoutMs){
-  for(var i=0;i<CORS_PROXIES.length;i++){
-    try{
-      var r=await fetch(CORS_PROXIES[i]+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||8000)});
-      if(r.ok)return r;
-    }catch(e){}
-  }
-  throw new Error('All proxies failed');
-}
-
-async function fetchData(params,srcIdx){
-  var src=srcIdx!==undefined?SRC[srcIdx]:SRC[si];
-  var u=new URL(src.u);for(var k in params)if(params[k]!==undefined&&params[k]!==null&&params[k]!=='')u.searchParams.set(k,params[k]);
-  var fullUrl=u.toString();
-  var cacheKey=fullUrl;
-  var cached=getCached(cacheKey,10*60*1000);
-  if(cached)return cached;
-  var r=await fetchWithProxy(fullUrl,10000);
-  var d=await r.json();
-  if(d&&(d.code===1||d.list)){setCache(cacheKey,d);return d;}
-  throw new Error(d.msg||'No data');
+async function fetchData(params){
+  const src=SRC[si];const r=await fetch(apiUrl(src,params),{signal:AbortSignal.timeout(15000)});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();if(d&&(d.code===1||d.list))return d;throw new Error(d.msg||'No data');
 }
 function parseList(d){if(!d||!d.list)return[];return d.list.map(v=>({id:v.vod_id,name:v.vod_name||'',pic:v.vod_pic||'',year:v.vod_year||'',area:v.vod_area||'',type:v.type_name||'',cls:v.vod_class||'',remarks:v.vod_remarks||'',score:v.vod_score||'',desc:v.vod_content?v.vod_content.replace(/<[^>]+>/g,'').trim():'',playFrom:v.vod_play_from||'',playUrl:v.vod_play_url||''}));}
 function parseEps(u){if(!u)return[];return u.split('#').map(s=>{const p=s.split('$');return{name:p[0]||'',url:p[1]||''};}).filter(e=>e.url&&e.name);}
@@ -467,8 +443,8 @@ async function loadHome(){
 
   var allResults=await Promise.allSettled(SRC.map(async function(src,idx){
     try{
-      var all=[];
-      for(var p=1;p<=3;p++){try{var d=await fetchData({ac:'detail',pg:p},idx);all=all.concat(parseList(d));}catch(e){break;}}
+      si=idx;var all=[];
+      for(var p=1;p<=3;p++){try{var d=await fetchData({ac:'detail',pg:p});all=all.concat(parseList(d));}catch(e){break;}}
       return all;
     }catch(e){return[];}
   }));
@@ -512,7 +488,7 @@ async function goCat(t,page=1){
   const seenIds=new Set();
   for(let i=0;i<SRC.length;i++){
     try{
-      si=i;const d=await fetchData({ac:'detail',pg:page},i);
+      si=i;const d=await fetchData({ac:'detail',pg:page});
       const all=parseList(d);
       let list;
       if(t===1)list=all.filter(v=>{const tp=v.type;return tp.includes('电影');});
@@ -615,7 +591,7 @@ async function doSearch(){
 
   var results=await Promise.allSettled(SRC.map(async function(src,idx){
     try{
-      var d=await fetchData({ac:'detail',wd:kw,pg:1},idx);return parseList(d);
+      si=idx;var d=await fetchData({ac:'detail',wd:kw,pg:1});return parseList(d);
     }catch(e){return[];}
   }));
   var allResults=[];var seen=new Set();
@@ -924,7 +900,9 @@ function startPlay(url){
 async function proxyAndPlayM3u8(url){
   var vid=document.getElementById('vid');
   try{
-    var r=await fetchWithProxy(url,15000);
+    var proxyUrl=CORS_PROXY+encodeURIComponent(url);
+    var r=await fetch(proxyUrl,{signal:AbortSignal.timeout(15000)});
+    if(!r.ok)throw new Error('HTTP '+r.status);
     var text=await r.text();
     var base=url.substring(0,url.lastIndexOf('/')+1);
     var lines=text.split('\n');
