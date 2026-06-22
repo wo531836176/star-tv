@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.25</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.26</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -371,7 +371,7 @@ let stack=[],favs=JSON.parse(localStorage.getItem('sv_f')||'[]'),hls=null;
 let curPanIdx=0,curWebIdx=0,vidList=[];
 let curCatPage=1,curCatLoading=false,curCatAllData=[];
 
-var CORS_PROXY='https://api.allorigins.win/raw?url=';
+var CORS_PROXY='https://corsproxy.io/?url=';
 function apiUrl(src,params){const u=new URL(src.u);for(const[k,v]of Object.entries(params))if(v!==undefined&&v!==null&&v!=='')u.searchParams.set(k,v);return CORS_PROXY+encodeURIComponent(u.toString());}
 function proxyUrl(url){return CORS_PROXY+encodeURIComponent(url);}
 
