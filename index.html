@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.30</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.31</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -891,7 +891,7 @@ function startPlay(url){
     return;
   }
   if(url.indexOf('.m3u8')>0){
-    proxyAndPlayM3u8(url);
+    tryPlayHls(url);
   }else{
     resolveShareUrl(url);
   }
@@ -901,7 +901,7 @@ async function resolveShareUrl(url){
   var vid=document.getElementById('vid');
   try{
     toast('正在解析视频地址...');
-    var proxyUrl=CORS_PROXY+encodeURIComponent(url);
+    var proxyUrl='https://corsproxy.io/?url='+encodeURIComponent(url);
     var r=await fetch(proxyUrl,{signal:AbortSignal.timeout(15000)});
     if(!r.ok)throw new Error('HTTP '+r.status);
     var html=await r.text();
@@ -922,32 +922,36 @@ async function resolveShareUrl(url){
       m3u8Url=url.replace(/\/?$/,'/index.m3u8');
     }
     if(m3u8Url){
-      console.log('[PLAY] resolved m3u8:',m3u8Url.substring(0,120));
-      proxyAndPlayM3u8(m3u8Url);
+      tryPlayHls(m3u8Url);
     }else{
-      toast('无法解析视频地址','err');
-      console.error('[PLAY] no m3u8 found in page, html length:',html.length);
+      window.open(url,'_blank');
+      toast('已在新窗口打开视频','info');
     }
   }catch(e){
     console.error('[PLAY] resolve error:',e.message);
-    toast('视频解析失败: '+e.message,'err');
+    window.open(url,'_blank');
+    toast('解析失败，已在新窗口打开','info');
   }
 }
 
-async function proxyAndPlayM3u8(url){
+async function tryPlayHls(url){
   var vid=document.getElementById('vid');
-  var proxyUrls=[
-    'https://corsproxy.io/?url='+encodeURIComponent(url),
-    'https://api.allorigins.win/raw?url='+encodeURIComponent(url)
+  var proxies=[
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url='
   ];
   var text=null;
-  for(var i=0;i<proxyUrls.length;i++){
+  for(var i=0;i<proxies.length;i++){
     try{
-      var r=await fetch(proxyUrls[i],{signal:AbortSignal.timeout(12000)});
+      var r=await fetch(proxies[i]+encodeURIComponent(url),{signal:AbortSignal.timeout(10000)});
       if(r.ok){text=await r.text();break;}
     }catch(e){}
   }
-  if(!text){toast('视频加载失败: 代理均不可用','err');return;}
+  if(!text||text.indexOf('#EXT')===-1){
+    window.open(url,'_blank');
+    toast('代理无法加载视频，已在新窗口打开','info');
+    return;
+  }
   try{
     var base=url.substring(0,url.lastIndexOf('/')+1);
     var lines=text.split('\n');
@@ -962,7 +966,8 @@ async function proxyAndPlayM3u8(url){
     initHlsPlayer(blobUrl);
   }catch(e){
     console.error('m3u8 parse failed:',e.message);
-    toast('视频解析失败: '+e.message,'err');
+    window.open(url,'_blank');
+    toast('解析失败，已在新窗口打开','info');
   }
 }
 
@@ -990,7 +995,7 @@ function initHlsPlayer(srcUrl){
       enableWorker:true,
       xhrSetup:function(xhr,reqUrl){
         if(reqUrl.indexOf('blob:')!==0&&reqUrl.indexOf('corsproxy.io')===-1&&reqUrl.indexOf('allorigins')===-1){
-          var proxied='https://corsproxy.io/?url='+encodeURIComponent(reqUrl);
+          var proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(reqUrl);
           try{xhr.open('GET',proxied,true);}catch(e){}
         }
       }
