@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.38</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.39</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -374,8 +374,7 @@ let curCatPage=1,curCatLoading=false,curCatAllData=[];
 
 var CORS_PROXIES=[
   'https://corsproxy.io/?url=',
-  'https://api.allorigins.win/raw?url=',
-  'https://api.codetabs.com/v1/proxy?quest='
+  'https://api.allorigins.win/raw?url='
 ];
 var CORS_PROXY=CORS_PROXIES[0];
 var _fastestIdx=0;
@@ -395,26 +394,19 @@ function setCache(key,data){
 async function testProxies(){
   if(_proxyTested)return;
   _proxyTested=true;
-  var testUrl='https://cj.ffzyapi.com/api.php/provide/vod/?ac=detail&pg=1';
-  var results=await Promise.allSettled(CORS_PROXIES.map(async function(proxy,i){
-    var start=Date.now();
-    var r=await fetch(proxy+encodeURIComponent(testUrl),{signal:AbortSignal.timeout(6000)});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    await r.json();
-    return{idx:i,time:Date.now()-start};
-  }));
-  var ok=results.filter(function(r){return r.status==='fulfilled';}).map(function(r){return r.value;});
-  if(ok.length>0){
-    ok.sort(function(a,b){return a.time-b.time;});
-    _fastestIdx=ok[0].idx;
-    console.log('[PROXY] fastest: '+CORS_PROXIES[_fastestIdx]+' ('+ok[0].time+'ms)');
-  }
+  try{
+    var testUrl='https://cj.ffzyapi.com/api.php/provide/vod/?ac=detail&pg=1';
+    var r=await fetch(CORS_PROXIES[0]+encodeURIComponent(testUrl),{signal:AbortSignal.timeout(6000)});
+    if(r.ok){_fastestIdx=0;console.log('[PROXY] corsproxy.io OK');return;}
+  }catch(e){}
+  _fastestIdx=1;
+  console.log('[PROXY] fallback to allorigins');
 }
 testProxies();
 
 async function fetchWithFallback(url,timeoutMs){
   var results=await Promise.allSettled(CORS_PROXIES.map(function(proxy,i){
-    return fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||5000)})
+    return fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||8000)})
       .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
   }));
   var ok=results.find(function(r){return r.status==='fulfilled';});
@@ -429,7 +421,7 @@ async function fetchData(params){
   const cacheKey=fullUrl;
   const cached=getCached(cacheKey,15*60*1000);
   if(cached)return cached;
-  const r=await fetchWithFallback(fullUrl,5000);
+  const r=await fetchWithFallback(fullUrl,8000);
   const d=await r.json();
   if(d&&(d.code===1||d.list)){setCache(cacheKey,d);return d;}
   throw new Error(d.msg||'No data');
@@ -654,15 +646,26 @@ async function doSearch(){
     return;
   }
 
-  var results=await Promise.allSettled(SRC.map(async function(src,idx){
-    try{
-      si=idx;var d=await fetchData({ac:'detail',wd:kw,pg:1});return parseList(d);
-    }catch(e){return[];}
-  }));
   var allResults=[];var seen=new Set();
-  results.forEach(function(r){
-    if(r.status==='fulfilled')r.value.forEach(function(v){if(!seen.has(v.id)){seen.add(v.id);allResults.push(v);}});
-  });
+  var srchEl=document.getElementById('srchG');
+
+  for(var i=0;i<SRC.length;i++){
+    try{
+      si=i;
+      var u=new URL(SRC[i].u);u.searchParams.set('ac','detail');u.searchParams.set('wd',kw);u.searchParams.set('pg','1');
+      var fullUrl=u.toString();
+      var cachedData=getCached(fullUrl,15*60*1000);
+      var d;
+      if(cachedData){d=cachedData;}
+      else{var r=await fetchWithFallback(fullUrl,8000);d=await r.json();setCache(fullUrl,d);}
+      if(d&&(d.code===1||d.list)){
+        var list=parseList(d);
+        list.forEach(function(v){if(!seen.has(v.id)){seen.add(v.id);allResults.push(v);}});
+        renderGrid(srchEl,allResults);
+        document.getElementById('srchT').textContent='搜索: "'+kw+'" ('+allResults.length+'条结果)';
+      }
+    }catch(e){}
+  }
   if(allResults.length>0){
     allResults.sort(function(a,b){
       var an=a.name.toLowerCase(),bn=b.name.toLowerCase(),k=kw.toLowerCase();
