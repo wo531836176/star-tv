@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.42</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.44</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -356,6 +356,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <script>
 const SRC=[
 {n:'非凡资源',u:'https://cj.ffzyapi.com/api.php/provide/vod/',cat:{1:1,2:2,3:3,4:4}},
+{n:'非凡资源2',u:'https://api.ffzyapi.com/api.php/provide/vod/',cat:{1:1,2:2,3:3,4:4}},
 {n:'量子资源',u:'https://cj.lziapi.com/api.php/provide/vod/',cat:{1:1,2:2,3:3,4:4}},
 {n:'闪电资源',u:'https://sdzyapi.com/api.php/provide/vod/',cat:{1:1,2:2,3:3,4:4}},
 {n:'无尽资源',u:'https://api.wujinapi.me/api.php/provide/vod/',cat:{1:1,2:2,3:3,4:4}},
@@ -405,7 +406,7 @@ async function testProxies(){
 testProxies();
 
 var _sourceBlacklist=JSON.parse(localStorage.getItem('sv_src_bl')||'{}');
-function _isBlacklisted(idx){return _sourceBlacklist[idx]&&Date.now()-_sourceBlacklist[idx]<30*60*1000;}
+function _isBlacklisted(idx){var bl=_sourceBlacklist[idx];if(!bl)return false;if(Date.now()-bl<30*60*1000)return true;delete _sourceBlacklist[idx];localStorage.setItem('sv_src_bl',JSON.stringify(_sourceBlacklist));return false;}
 function _blacklistSource(idx){_sourceBlacklist[idx]=Date.now();localStorage.setItem('sv_src_bl',JSON.stringify(_sourceBlacklist));}
 function _clearBlacklist(){_sourceBlacklist={};localStorage.removeItem('sv_src_bl');}
 
@@ -500,7 +501,7 @@ async function loadHome(){
     if(_isBlacklisted(idx))return[];
     try{
       si=idx;var all=[];
-      for(var p=1;p<=3;p++){try{var d=await fetchData({ac:'detail',pg:p});all=all.concat(parseList(d));}catch(e){break;}}
+      for(var p=1;p<=2;p++){try{var d=await fetchData({ac:'detail',pg:p,sort:'hits',by:'desc'});all=all.concat(parseList(d));}catch(e){break;}}
       return all;
     }catch(e){return[];}
   }));
@@ -508,11 +509,15 @@ async function loadHome(){
   var all=[];
   allResults.forEach(function(r){if(r.status==='fulfilled')all=all.concat(r.value);});
   var clean=all.filter(function(v){return!SHORT_DRAMA.test(v.name);});
-  var movies=clean.filter(function(v){return v.type.includes('电影');});
-  var tvShows=clean.filter(function(v){return v.type.includes('剧');});
+  var recent=clean.filter(function(v){
+    var yr=parseInt(v.year)||0;
+    return yr>=2023;
+  });
+  var movies=recent.filter(function(v){return v.type.includes('电影');});
+  var tvShows=recent.filter(function(v){return v.type.includes('剧');});
 
-  var hotList=movies.length>0?movies.slice(0,30):clean.filter(function(v){return!v.type.includes('剧')&&!v.type.includes('动漫');}).slice(0,30);
-  var newList=tvShows.length>0?tvShows.slice(0,30):clean.slice(0,30);
+  var hotList=movies.length>0?movies.slice(0,30):recent.filter(function(v){return!v.type.includes('剧')&&!v.type.includes('动漫');}).slice(0,30);
+  var newList=tvShows.length>0?tvShows.slice(0,30):recent.slice(0,30);
 
   if(hotList.length>0){
     renderGrid(document.getElementById('hotG'),hotList);
@@ -554,7 +559,7 @@ async function goCat(t,page=1){
   var allResults=await Promise.allSettled(SRC.map(async function(src,idx){
     if(_isBlacklisted(idx))return[];
     try{
-      var u=new URL(src.u);u.searchParams.set('ac','detail');u.searchParams.set('pg',page);
+      var u=new URL(src.u);u.searchParams.set('ac','detail');u.searchParams.set('pg',page);u.searchParams.set('sort','hits');u.searchParams.set('by','desc');
       var fullUrl=u.toString();
       var cachedData=getCached(fullUrl,15*60*1000);
       var d;
@@ -665,25 +670,41 @@ async function doSearch(){
 
   var allResults=[];var seen=new Set();
   var srchEl=document.getElementById('srchG');
+  var searchCancelled=false;
 
-  for(var i=0;i<SRC.length;i++){
-    if(_isBlacklisted(i))continue;
-    try{
-      si=i;
-      var u=new URL(SRC[i].u);u.searchParams.set('ac','detail');u.searchParams.set('wd',kw);u.searchParams.set('pg','1');
-      var fullUrl=u.toString();
-      var cachedData=getCached(fullUrl,15*60*1000);
-      var d;
-      if(cachedData){d=cachedData;}
-      else{var r=await fetchWithFallback(fullUrl,5000);d=await r.json();setCache(fullUrl,d);}
-      if(d&&(d.code===1||d.list)){
-        var list=parseList(d);
-        list.forEach(function(v){if(!seen.has(v.id)){seen.add(v.id);allResults.push(v);}});
-        renderGrid(srchEl,allResults);
-        document.getElementById('srchT').textContent='搜索: "'+kw+'" ('+allResults.length+'条结果)';
-      }
-    }catch(e){}
+  function searchSource(idx){
+    if(_isBlacklisted(idx)||searchCancelled)return Promise.resolve([]);
+    var u=new URL(SRC[idx].u);u.searchParams.set('ac','detail');u.searchParams.set('wd',kw);u.searchParams.set('pg','1');
+    var fullUrl=u.toString();
+    var cachedData=getCached(fullUrl,15*60*1000);
+    if(cachedData)return Promise.resolve(parseList(cachedData));
+    return fetchWithFallback(fullUrl,5000).then(function(r){return r.json();}).then(function(d){
+      setCache(fullUrl,d);
+      if(d&&(d.code===1||d.list))return parseList(d);
+      return[];
+    }).catch(function(){return[];});
   }
+
+  function addResults(list){
+    list.forEach(function(v){if(!seen.has(v.id)){seen.add(v.id);allResults.push(v);}});
+    if(allResults.length>0){
+      renderGrid(srchEl,allResults);
+      document.getElementById('srchT').textContent='搜索: "'+kw+'" ('+allResults.length+'条结果)';
+    }
+  }
+
+  var BATCH=3;
+  for(var b=0;b<SRC.length;b+=BATCH){
+    if(searchCancelled)break;
+    var batch=[];
+    for(var j=b;j<Math.min(b+BATCH,SRC.length);j++){batch.push({idx:j,p:searchSource(j)});}
+    var results=await Promise.all(batch.map(function(x){return x.p;}));
+    for(var r=0;r<results.length;r++){
+      if(results[r]&&results[r].length>0)addResults(results[r]);
+    }
+    if(allResults.length>=20){searchCancelled=true;break;}
+  }
+
   if(allResults.length>0){
     allResults.sort(function(a,b){
       var an=a.name.toLowerCase(),bn=b.name.toLowerCase(),k=kw.toLowerCase();
