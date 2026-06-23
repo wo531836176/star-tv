@@ -406,6 +406,8 @@ async function testProxies(){
 testProxies();
 
 var _sourceBlacklist=JSON.parse(localStorage.getItem('sv_src_bl')||'{}');
+var _blVer=localStorage.getItem('sv_bl_ver');
+if(_blVer!=='1.44b'){_sourceBlacklist={};localStorage.setItem('sv_src_bl','{}');localStorage.setItem('sv_bl_ver','1.44b');for(var bi=0;bi<20;bi++)localStorage.removeItem('fail_'+bi);}
 function _isBlacklisted(idx){var bl=_sourceBlacklist[idx];if(!bl)return false;if(Date.now()-bl<30*60*1000)return true;delete _sourceBlacklist[idx];localStorage.setItem('sv_src_bl',JSON.stringify(_sourceBlacklist));return false;}
 function _blacklistSource(idx){_sourceBlacklist[idx]=Date.now();localStorage.setItem('sv_src_bl',JSON.stringify(_sourceBlacklist));}
 function _clearBlacklist(){_sourceBlacklist={};localStorage.removeItem('sv_src_bl');}
@@ -501,7 +503,7 @@ async function loadHome(){
     if(_isBlacklisted(idx))return[];
     try{
       si=idx;var all=[];
-      for(var p=1;p<=2;p++){try{var d=await fetchData({ac:'detail',pg:p,sort:'hits',by:'desc'});all=all.concat(parseList(d));}catch(e){break;}}
+      for(var p=1;p<=2;p++){try{var d=await fetchData({ac:'detail',pg:p});all=all.concat(parseList(d));}catch(e){break;}}
       return all;
     }catch(e){return[];}
   }));
