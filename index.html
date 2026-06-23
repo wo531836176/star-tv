@@ -413,13 +413,14 @@ function _blacklistSource(idx){_sourceBlacklist[idx]=Date.now();localStorage.set
 function _clearBlacklist(){_sourceBlacklist={};localStorage.removeItem('sv_src_bl');}
 
 async function fetchWithFallback(url,timeoutMs){
-  var results=await Promise.allSettled(CORS_PROXIES.map(function(proxy,i){
-    return fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||8000)})
-      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
-  }));
-  var ok=results.find(function(r){return r.status==='fulfilled';});
-  if(ok)return ok.value;
-  throw new Error('All proxies failed');
+  try{
+    return await Promise.any(CORS_PROXIES.map(function(proxy){
+      return fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||5000)})
+        .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
+    }));
+  }catch(e){
+    throw new Error('All proxies failed');
+  }
 }
 
 async function fetchData(params){
