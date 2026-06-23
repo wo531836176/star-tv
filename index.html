@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.33</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.34</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -328,6 +328,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <div class="player-box" id="playerWrap">
 <div id="localBadge" style="position:absolute;top:10px;left:10px;background:rgba(46,204,113,.9);color:#fff;padding:4px 12px;border-radius:4px;font-size:12px;font-weight:600;z-index:10;display:none">本地视频</div>
 <video id="vid" preload="auto"></video>
+<iframe id="videoFrame" style="display:none;width:100%;aspect-ratio:16/9;border:none;border-radius:var(--r);background:#000" allow="autoplay;fullscreen" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
 <div class="ply-bar" id="pC">
 <div class="pg-bar" id="pgB"><div class="buf" id="pgBuf"></div><div class="plyd" id="pgPly"></div></div>
 <div class="cb"><div class="cbl"><button class="cb2" id="ppB" onclick="togPP()">&#9654;</button><button class="cb2" onclick="prevEp()">&#9194;</button><button class="cb2" onclick="nextEp()">&#9193;</button><span class="td" id="tD">00:00/00:00</span></div>
@@ -882,35 +883,30 @@ function playEp(idx){
 var _lastSeekTime=0,_isSeeking=false,_videoPopup=null;
 function startPlay(url){
   var vid=document.getElementById('vid');
+  var frame=document.getElementById('videoFrame');
   if(hls){hls.destroy();hls=null;}
   var isLocal=url.indexOf('/local-video?')>=0;
   document.getElementById('localBadge').style.display=isLocal?'block':'none';
+
+  vid.style.display=isLocal?'block':'none';
+  frame.style.display=isLocal?'none':'block';
+  document.getElementById('pC').style.display=isLocal?'block':'none';
+
   if(isLocal){
     vid.src=url;vid.load();
     vid.play().catch(function(e){setTimeout(function(){vid.play().catch(function(){});},500);});
     return;
   }
   if(url.indexOf('.m3u8')>0){
-    openVideoPopup(url);
+    frame.style.display='block';
+    vid.style.display='none';
+    document.getElementById('pC').style.display='none';
+    frame.src=url;
   }else{
-    resolveShareUrl(url);
-  }
-}
-
-function openVideoPopup(url){
-  if(_videoPopup&&!_videoPopup.closed){
-    try{_videoPopup.location.href=url;}catch(e){
-      _videoPopup=window.open(url,'_blank');
-    }
-    return;
-  }
-  var w=Math.min(800,screen.width-40),h=Math.min(500,screen.height-100);
-  var left=Math.max(0,(screen.width-w)/2);
-  var top=Math.max(0,(screen.height-h)/2);
-  _videoPopup=window.open(url,'_blank','width='+w+',height='+h+',left='+left+',top='+top+',resizable=yes');
-  if(!_videoPopup||_videoPopup.closed){
-    window.open(url,'_blank');
-    toast('请点击浏览器允许弹窗');
+    frame.style.display='block';
+    vid.style.display='none';
+    document.getElementById('pC').style.display='none';
+    frame.src=url;
   }
 }
 
@@ -934,15 +930,25 @@ async function resolveShareUrl(url){
       }
     }
     if(m3u8Url){
-      openVideoPopup(m3u8Url);
+      var frame=document.getElementById('videoFrame');
+      frame.style.display='block';
+      document.getElementById('vid').style.display='none';
+      document.getElementById('pC').style.display='none';
+      frame.src=m3u8Url;
     }else{
-      window.open(url,'_blank');
-      toast('已在新窗口打开');
+      var frame=document.getElementById('videoFrame');
+      frame.style.display='block';
+      document.getElementById('vid').style.display='none';
+      document.getElementById('pC').style.display='none';
+      frame.src=url;
     }
   }catch(e){
     console.error('[PLAY] resolve error:',e.message);
-    window.open(url,'_blank');
-    toast('已在新窗口打开');
+    var frame=document.getElementById('videoFrame');
+    frame.style.display='block';
+    document.getElementById('vid').style.display='none';
+    document.getElementById('pC').style.display='none';
+    frame.src=url;
   }
 }
 
