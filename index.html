@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.37</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.38</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -413,14 +413,12 @@ async function testProxies(){
 testProxies();
 
 async function fetchWithFallback(url,timeoutMs){
-  var startIdx=_fastestIdx;
-  for(var tries=0;tries<CORS_PROXIES.length;tries++){
-    var i=(startIdx+tries)%CORS_PROXIES.length;
-    try{
-      var r=await fetch(CORS_PROXIES[i]+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||8000)});
-      if(r.ok)return r;
-    }catch(e){}
-  }
+  var results=await Promise.allSettled(CORS_PROXIES.map(function(proxy,i){
+    return fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||5000)})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
+  }));
+  var ok=results.find(function(r){return r.status==='fulfilled';});
+  if(ok)return ok.value;
   throw new Error('All proxies failed');
 }
 
@@ -431,7 +429,7 @@ async function fetchData(params){
   const cacheKey=fullUrl;
   const cached=getCached(cacheKey,15*60*1000);
   if(cached)return cached;
-  const r=await fetchWithFallback(fullUrl,10000);
+  const r=await fetchWithFallback(fullUrl,5000);
   const d=await r.json();
   if(d&&(d.code===1||d.list)){setCache(cacheKey,d);return d;}
   throw new Error(d.msg||'No data');
@@ -534,25 +532,42 @@ async function goCat(t,page=1){
     loadEl.innerHTML='<div class="spin"></div>';
     document.getElementById('catG').appendChild(loadEl);
   }
-  let newItems=[];
-  const seenIds=new Set();
-  for(let i=0;i<SRC.length;i++){
-    try{
-      si=i;const d=await fetchData({ac:'detail',pg:page});
-      const all=parseList(d);
-      let list;
-      if(t===1)list=all.filter(v=>{const tp=v.type;return tp.includes('电影');});
-      else if(t===2)list=all.filter(v=>{const tp=v.type;return tp.includes('剧');});
-      else if(t===3)list=all.filter(v=>{const tp=v.type;return tp.includes('综艺');});
-      else if(t===4)list=all.filter(v=>{const tp=v.type;return tp.includes('动漫');});
-      else list=all;
-      list=list.filter(v=>!seenIds.has(v.id)&&!SHORT_DRAMA.test(v.name));
-      list.forEach(v=>seenIds.add(v.id));
-      newItems=newItems.concat(list);
-    }catch(e){}
+
+  var cacheKey='cat_'+t+'_'+page;
+  var cached=getCached(cacheKey,15*60*1000);
+  if(cached){
+    curCatAllData=curCatAllData.concat(cached);
+    curCatLoading=false;
+    renderCatGrid();
+    if(cached.length>0)addCatScrollListener();
+    return;
   }
+
+  var allResults=await Promise.allSettled(SRC.map(async function(src,idx){
+    try{
+      var u=new URL(src.u);u.searchParams.set('ac','detail');u.searchParams.set('pg',page);
+      var fullUrl=u.toString();
+      var cachedData=getCached(fullUrl,15*60*1000);
+      var d;
+      if(cachedData){d=cachedData;}
+      else{var r=await fetchWithFallback(fullUrl,5000);d=await r.json();setCache(fullUrl,d);}
+      if(!d||(!d.code&& !d.list))return[];
+      var all=parseList(d);
+      var catMap={1:'电影',2:'剧',3:'综艺',4:'动漫'};
+      return all.filter(function(v){return v.type.includes(catMap[t]);});
+    }catch(e){return[];}
+  }));
+
+  var newItems=[];
+  var seenIds=new Set();
+  allResults.forEach(function(r){
+    if(r.status==='fulfilled')r.value.forEach(function(v){
+      if(!seenIds.has(v.id)&&!SHORT_DRAMA.test(v.name)){seenIds.add(v.id);newItems.push(v);}
+    });
+  });
   curCatAllData=curCatAllData.concat(newItems);
   curCatLoading=false;
+  if(newItems.length>0)setCache('cat_'+t+'_'+page,newItems);
   if(page===1&&curCatAllData.length===0){
     document.getElementById('catG').innerHTML='<div class="empty"><div class="ic">&#9888;</div>加载失败</div>';
     return;
