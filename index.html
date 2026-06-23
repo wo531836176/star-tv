@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.35</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.36</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -292,7 +292,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <a onclick="goCat(4)">动漫</a>
 <a onclick="goNetdisk()">网盘</a>
 <a onclick="goWebSrch()">搜索</a>
-<a onclick="show91sp()">91视频</a>
+<a onclick="show91sp()">精彩推荐</a>
 </nav>
 </div>
 <div class="hdr-r">
@@ -317,7 +317,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <div class="sec" id="srchSec" style="display:none"><div class="sec-t" id="srchT"></div><div class="grid" id="srchG"></div><div id="srchPg" style="text-align:center;margin-top:16px"></div></div>
 <div class="sec" id="netdiskSec" style="display:none"><div class="sec-t">网盘搜索</div><div style="margin-bottom:16px;display:flex;gap:8px"><input id="panInput" placeholder="输入关键词搜索网盘资源..." style="flex:1;background:var(--bg2);border:1px solid var(--border);color:#fff;padding:8px 14px;border-radius:var(--r);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')doPanSearch()"><button onclick="doPanSearch()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:600">搜索</button></div><div id="panResult" class="link-list"></div></div>
 <div class="sec" id="webSrchSec" style="display:none"><div class="sec-t">在线搜索</div><div class="search-tabs" id="webTabs"><div class="search-tab on" onclick="switchWeb(0)">百度搜索</div><div class="search-tab" onclick="switchWeb(1)">必应搜索</div><div class="search-tab" onclick="switchWeb(2)">搜狗影视</div><div class="search-tab" onclick="switchWeb(3)">聚合搜索</div></div><div style="margin-bottom:16px;display:flex;gap:8px"><input id="webInput" placeholder="输入影视名称搜索在线资源..." style="flex:1;background:var(--bg2);border:1px solid var(--border);color:#fff;padding:8px 14px;border-radius:var(--r);font-size:13px;outline:none" onkeydown="if(event.key==='Enter')doWebSearch()"><button onclick="doWebSearch()" style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:var(--r);cursor:pointer;font-size:13px;font-weight:600">搜索</button></div><div id="webResult" class="link-list"></div></div>
-<div class="sec" id="sp91Sec" style="display:none;padding-top:60px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 10px"><span style="font-size:18px;font-weight:700">91视频</span><button onclick="goBack()" style="background:var(--accent);color:#fff;border:none;padding:6px 16px;border-radius:var(--r);cursor:pointer;font-size:13px">返回首页</button></div><iframe id="sp91Frame" src="" sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:var(--r);background:#000"></iframe></div>
+<div class="sec" id="sp91Sec" style="display:none;padding-top:60px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 10px"><span style="font-size:18px;font-weight:700">精彩推荐</span><button onclick="goBack()" style="background:var(--accent);color:#fff;border:none;padding:6px 16px;border-radius:var(--r);cursor:pointer;font-size:13px">返回首页</button></div><div id="sp91PwdWrap" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 180px)"><div style="font-size:16px;color:var(--text2);margin-bottom:20px">请输入访问密码</div><div style="display:flex;gap:8px;align-items:center"><input id="sp91Pwd" type="password" maxlength="4" placeholder="四位密码" style="width:120px;background:var(--bg2);border:1px solid var(--border);color:#fff;padding:10px 14px;border-radius:var(--r);font-size:16px;text-align:center;letter-spacing:8px;outline:none" onkeydown="if(event.key==='Enter')check91Pwd()"><button onclick="check91Pwd()" style="background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:var(--r);cursor:pointer;font-size:14px;font-weight:600">确认</button></div><div id="sp91PwdErr" style="color:#f44336;font-size:13px;margin-top:10px;display:none">密码错误，请重新输入</div></div><iframe id="sp91Frame" src="" sandbox="allow-same-origin allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation" style="width:100%;height:calc(100vh - 120px);border:none;border-radius:var(--r);background:#000;display:none"></iframe></div>
 </div>
 
 <div class="sec" id="dlSec" style="display:none;padding:70px 20px 40px;max-width:1300px;margin:0 auto"><div class="dl-hdr"><div class="sec-t">我的下载</div><button class="dl-clr" onclick="clearDownloads()">清空记录</button></div><div id="dlList" class="dl-list"></div></div>
@@ -638,8 +638,24 @@ function show91sp(){
   document.getElementById('hotG').parentElement.style.display='none';
   document.getElementById('newG').parentElement.style.display='none';
   document.getElementById('sp91Sec').style.display='block';
-  var frame=document.getElementById('sp91Frame');
-  frame.src='https://1776783556940z1281462991st1.nx77jgkwvz.com';
+  document.getElementById('sp91PwdWrap').style.display='flex';
+  document.getElementById('sp91Frame').style.display='none';
+  document.getElementById('sp91Frame').src='';
+  document.getElementById('sp91Pwd').value='';
+  document.getElementById('sp91PwdErr').style.display='none';
+  document.getElementById('sp91Pwd').focus();
+}
+function check91Pwd(){
+  var pwd=document.getElementById('sp91Pwd').value;
+  if(pwd==='9191'){
+    document.getElementById('sp91PwdWrap').style.display='none';
+    document.getElementById('sp91Frame').style.display='block';
+    document.getElementById('sp91Frame').src='https://1776783556940z1281462991st1.nx77jgkwvz.com';
+  }else{
+    document.getElementById('sp91PwdErr').style.display='block';
+    document.getElementById('sp91Pwd').value='';
+    document.getElementById('sp91Pwd').focus();
+  }
 }
 function switchWeb(i){curWebIdx=i;document.querySelectorAll('#webTabs .search-tab').forEach((t,j)=>t.className='search-tab'+(j===i?' on':''));}
 var _clientRefreshTimer=null;
