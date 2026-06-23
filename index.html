@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.27</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.28</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -973,47 +973,6 @@ function initHlsPlayer(srcUrl){
     vid.play().catch(function(){});
   }else{
     toast('您的浏览器不支持HLS播放','err');
-  }
-}
-  var px=url.indexOf('/proxy?url=')===0?url:proxyUrl(url);
-  if(Hls.isSupported()){
-    hls=new Hls({
-      maxBufferLength:60,
-      maxMaxBufferLength:120,
-      maxBufferSize:60*1024*1024,
-      startFragPrefetch:true,
-      fragLoadingTimeOut:20000,
-      manifestLoadingTimeOut:15000,
-      levelLoadingTimeOut:15000,
-      lowBufferWatchdogPeriod:1,
-      highBufferWatchdogPeriod:3,
-      nudgeOffset:0.05,
-      nudgeMaxRetry:5,
-      testBandwidth:true,
-      abrEwmaDefaultEstimate:2000000,
-      abrEwmaFastEstimate:2000000,
-      abrBandWidthFactor:0.95,
-      abrBandWidthUpFactor:0.7,
-      startLevel:-1,
-      enableWorker:true,
-      xhrSetup:function(xhr,url){
-        if(url.indexOf(CORS_PROXY)===-1){
-          try{xhr.open('GET',CORS_PROXY+encodeURIComponent(url),true);}catch(e){}
-        }
-      }
-    });
-    hls.loadSource(px);
-    hls.attachMedia(vid);
-    hls.on(Hls.Events.MANIFEST_PARSED,function(){vid.play().catch(function(){});});
-    hls.on(Hls.Events.ERROR,function(e,d){
-      if(d.fatal){
-        if(d.type===Hls.ErrorTypes.NETWORK_ERROR)hls.startLoad();
-        else if(d.type===Hls.ErrorTypes.MEDIA_ERROR)hls.recoverMediaError();
-      }
-    });
-  }else{
-    vid.src=px;
-    vid.play().catch(function(){});
   }
 }
 
