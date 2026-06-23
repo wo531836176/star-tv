@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.44</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.45</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -483,41 +483,51 @@ function updateBadges(){
   if(favBadge)favBadge.textContent=favCount;
 }
 
-const SHORT_DRAMA=/短剧|微剧|竖屏|霸总|甜宠|穿越|重生|逆袭|总裁|豪门|战神|赘婿|神医|龙王|至尊|乞丐|透视|鉴宝/i;
+const SHORT_DRAMA=/短剧|微剧|竖屏|霸总|甜宠|穿越|重生|逆袭|总裁|豪门|战神|赘婿|神医|龙王|至尊|乞丐|透视|鉴宝|爽剧|反转爽剧|漫剧/i;
 
 async function loadHome(){
   curView='home';stack=[];vidList=[];hideAll();setActiveNav(0);
   document.getElementById('hotG').innerHTML='<div class="empty"><div class="spin"></div></div>';
   document.getElementById('newG').innerHTML='<div class="empty"><div class="spin"></div></div>';
 
-  var cachedHome=getCached('home_data',5*60*1000);
+  var cachedHome=getCached('home_data',3*60*1000);
   if(cachedHome){
     renderGrid(document.getElementById('hotG'),cachedHome.movies);
     renderGrid(document.getElementById('newG'),cachedHome.tvShows);
     return;
   }
 
+  var weekAgo=Date.now()-7*24*60*60*1000;
+
   var allResults=await Promise.allSettled(SRC.map(async function(src,idx){
     if(_isBlacklisted(idx))return[];
     try{
       si=idx;var all=[];
-      for(var p=1;p<=2;p++){try{var d=await fetchData({ac:'detail',pg:p,sort:'hits',by:'desc'});all=all.concat(parseList(d));}catch(e){break;}}
+      for(var p=1;p<=3;p++){try{var d=await fetchData({ac:'detail',pg:p,sort:'hits',by:'desc'});all=all.concat(parseList(d));}catch(e){break;}}
       return all;
     }catch(e){return[];}
   }));
 
   var all=[];
   allResults.forEach(function(r){if(r.status==='fulfilled')all=all.concat(r.value);});
-  var clean=all.filter(function(v){return!SHORT_DRAMA.test(v.name);});
-  var recent=clean.filter(function(v){
+
+  var clean=all.filter(function(v){
+    if(SHORT_DRAMA.test(v.name))return false;
+    if(v.remarks&&SHORT_DRAMA.test(v.remarks))return false;
+    return true;
+  });
+
+  var fresh=clean.filter(function(v){
+    if(v.type.includes('综艺')||v.type.includes('动漫'))return true;
     var yr=parseInt(v.year)||0;
     return yr>=2023;
   });
-  var movies=recent.filter(function(v){return v.type.includes('电影');});
-  var tvShows=recent.filter(function(v){return v.type.includes('剧');});
 
-  var hotList=movies.length>0?movies.slice(0,30):recent.filter(function(v){return!v.type.includes('剧')&&!v.type.includes('动漫');}).slice(0,30);
-  var newList=tvShows.length>0?tvShows.slice(0,30):recent.slice(0,30);
+  var movies=fresh.filter(function(v){return v.type.includes('电影');}).slice(0,30);
+  var tvShows=fresh.filter(function(v){return v.type.includes('剧');}).slice(0,30);
+
+  var hotList=movies.length>0?movies:fresh.filter(function(v){return!v.type.includes('剧')&&!v.type.includes('动漫')&&!v.type.includes('综艺');}).slice(0,30);
+  var newList=tvShows.length>0?tvShows:fresh.filter(function(v){return v.type.includes('剧');}).slice(0,30);
 
   if(hotList.length>0){
     renderGrid(document.getElementById('hotG'),hotList);
