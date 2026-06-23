@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.32</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.33</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -879,7 +879,7 @@ function playEp(idx){
   startPlay(ep.url);
 }
 
-var _lastSeekTime=0,_isSeeking=false;
+var _lastSeekTime=0,_isSeeking=false,_videoPopup=null;
 function startPlay(url){
   var vid=document.getElementById('vid');
   if(hls){hls.destroy();hls=null;}
@@ -891,10 +891,26 @@ function startPlay(url){
     return;
   }
   if(url.indexOf('.m3u8')>0){
-    window.open(url,'_blank');
-    toast('已在新窗口打开播放');
+    openVideoPopup(url);
   }else{
     resolveShareUrl(url);
+  }
+}
+
+function openVideoPopup(url){
+  if(_videoPopup&&!_videoPopup.closed){
+    try{_videoPopup.location.href=url;}catch(e){
+      _videoPopup=window.open(url,'_blank');
+    }
+    return;
+  }
+  var w=Math.min(800,screen.width-40),h=Math.min(500,screen.height-100);
+  var left=Math.max(0,(screen.width-w)/2);
+  var top=Math.max(0,(screen.height-h)/2);
+  _videoPopup=window.open(url,'_blank','width='+w+',height='+h+',left='+left+',top='+top+',resizable=yes');
+  if(!_videoPopup||_videoPopup.closed){
+    window.open(url,'_blank');
+    toast('请点击浏览器允许弹窗');
   }
 }
 
@@ -918,8 +934,7 @@ async function resolveShareUrl(url){
       }
     }
     if(m3u8Url){
-      window.open(m3u8Url,'_blank');
-      toast('已在新窗口打开播放');
+      openVideoPopup(m3u8Url);
     }else{
       window.open(url,'_blank');
       toast('已在新窗口打开');
