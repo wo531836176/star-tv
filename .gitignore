@@ -7,5 +7,6 @@ cloudflare_error.txt
 cloudflare_output.txt
 .workbuddy/
 _dream_query*.js
+check_syntax.js
 tunnel_url.txt
 *.log

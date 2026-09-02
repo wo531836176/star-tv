@@ -283,7 +283,7 @@ html,body{overflow-x:hidden!important;max-width:100vw!important}
 <body>
 <div class="hdr">
 <div class="hdr-l">
-<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.45</span></div>
+<div class="logo" onclick="goHome()"><b>&#9654;</b>StarTV <span style="font-size:11px;color:var(--text3);font-weight:400">v1.46</span></div>
 <nav class="nav" id="nav">
 <a class="on" onclick="goHome()">首页</a>
 <a onclick="goCat(1)">电影</a>
@@ -374,8 +374,7 @@ let curPanIdx=0,curWebIdx=0,vidList=[];
 let curCatPage=1,curCatLoading=false,curCatAllData=[];
 
 var CORS_PROXIES=[
-  'https://corsproxy.io/?url=',
-  'https://api.allorigins.win/raw?url='
+  '/api?url='
 ];
 var CORS_PROXY=CORS_PROXIES[0];
 var _fastestIdx=0;
@@ -398,10 +397,10 @@ async function testProxies(){
   try{
     var testUrl='https://cj.ffzyapi.com/api.php/provide/vod/?ac=detail&pg=1';
     var r=await fetch(CORS_PROXIES[0]+encodeURIComponent(testUrl),{signal:AbortSignal.timeout(6000)});
-    if(r.ok){_fastestIdx=0;console.log('[PROXY] corsproxy.io OK');return;}
+    if(r.ok){_fastestIdx=0;console.log('[PROXY] backend proxy OK');return;}
   }catch(e){}
-  _fastestIdx=1;
-  console.log('[PROXY] fallback to allorigins');
+  _fastestIdx=0;
+  console.log('[PROXY] backend proxy failed');
 }
 testProxies();
 
@@ -414,10 +413,8 @@ function _clearBlacklist(){_sourceBlacklist={};localStorage.removeItem('sv_src_b
 
 async function fetchWithFallback(url,timeoutMs){
   try{
-    return await Promise.any(CORS_PROXIES.map(function(proxy){
-      return fetch(proxy+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||5000)})
-        .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
-    }));
+    return await fetch(CORS_PROXIES[0]+encodeURIComponent(url),{signal:AbortSignal.timeout(timeoutMs||5000)})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r;});
   }catch(e){
     throw new Error('All proxies failed');
   }
@@ -1098,8 +1095,8 @@ function initHlsPlayer(srcUrl){
       startLevel:-1,
       enableWorker:true,
       xhrSetup:function(xhr,reqUrl){
-        if(reqUrl.indexOf('blob:')!==0&&reqUrl.indexOf('corsproxy.io')===-1&&reqUrl.indexOf('allorigins')===-1){
-          var proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(reqUrl);
+        if(reqUrl.indexOf('blob:')!==0&&reqUrl.indexOf('/proxy?url=')===-1&&reqUrl.indexOf('/api?url=')===-1){
+          var proxied='/proxy?url='+encodeURIComponent(reqUrl);
           try{xhr.open('GET',proxied,true);}catch(e){}
         }
       }

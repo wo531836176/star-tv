@@ -4,6 +4,31 @@
 
 ---
 
+## v1.46 — 全站视频/搜索故障修复（2026-09-02）
+
+### 故障原因
+- 服务器进程未运行（端口 8888 无监听），导致全站不可访问
+- 前端依赖的第三方 CORS 代理失效：
+  - `corsproxy.io` 返回 401（免费服务需 API key）
+  - `api.allorigins.win` 连接超时/宕机
+  - 所有资源站请求均走这两个代理，代理失效导致视频列表、搜索、播放全部瘫痪
+- `extractVideoUrl` 正则只匹配 `url:` 冒号格式，ffzy-play8 share 页面已改为 `url = ` 等号格式，导致 m3u8 提取失败（502）
+
+### 修复内容
+- 前端所有代理请求改走自有后端：
+  - JSON/文本请求（`apiUrl`/`proxyUrl`/`fetchWithFallback`/`testProxies`）→ `/api?url=`
+  - 播放器 m3u8/ts 分片（hls.js `xhrSetup`）→ `/proxy?url=`
+- `extractVideoUrl` 正则兼容 `url:` 与 `url = ` 两种格式
+- 移除全部外部 CORS 代理依赖（corsproxy.io / allorigins.win）
+
+### 验证结果
+- 首页 200 ✓
+- 视频列表 API 返回完整 JSON ✓
+- share 页 → master m3u8 → ts 分片（654KB 二进制）全链路正常 ✓
+- 网盘搜索接口正常 ✓
+
+---
+
 ## v0.8 — 手机端全面优化 & 功能增强（2026-06-15）
 
 ### 手机端UI优化

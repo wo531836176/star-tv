@@ -259,7 +259,7 @@ function rewriteM3U8(content, baseUrl) {
 }
 
 function extractVideoUrl(html, shareUrl) {
-    let match = html.match(/url:\s*['"]([^'"]+\.m3u8[^'"]*)['"]/);
+    let match = html.match(/url\s*[:=]\s*['"]([^'"]+\.m3u8[^'"]*)['"]/);
     if (!match) match = html.match(/var\s+main\s*=\s*["']([^"']+)["']/);
     if (match) {
         let videoPath = match[1];
